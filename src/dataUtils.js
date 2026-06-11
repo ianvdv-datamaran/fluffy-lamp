@@ -36,7 +36,7 @@ export const ESRS_TOPICS = [
   'Business conduct',
 ];
 
-// Map ESRS topic -> its sub_topics
+// ESRS mode: map esrs_topic -> sorted unique sub_topics
 export function getEsrsSubtopics(rows) {
   const map = {};
   for (const row of rows) {
@@ -53,71 +53,35 @@ export function getEsrsSubtopics(rows) {
   return result;
 }
 
-// Map Datamaran topic -> sub (no subtopics in this mode, so we'll just use topic_name flat)
-// But we need to group by something. We'll use esrs_topic as the "parent" group for Datamaran mode.
-export function getDatamaranTopics(rows) {
-  // group topic_name by esrs_topic
-  const map = {};
-  for (const row of rows) {
-    const parent = row.esrs_topic;
-    const child = row.topic_name;
-    if (!parent || !child) continue;
-    if (!map[parent]) map[parent] = new Set();
-    map[parent].add(child);
-  }
-  const result = {};
-  for (const [p, c] of Object.entries(map)) {
-    result[p] = Array.from(c).sort();
-  }
-  return result;
+// Datamaran mode: sorted unique topic_name values (flat list, no ESRS grouping)
+export function getDatamaranTopicList(rows) {
+  return [...new Set(rows.map(r => r.topic_name).filter(Boolean))].sort();
 }
 
 export function getIndustries(rows) {
   return [...new Set(rows.map(r => r.industry_name).filter(Boolean))].sort();
 }
 
-/**
- * For a given filter, compute: % of companies reporting at least one IRO of each type
- * for each topic/subtopic combination.
- *
- * @param rows - all data rows
- * @param industry - selected industry
- * @param year - '2025' or '2026'
- * @param topicMode - 'esrs' | 'datamaran'
- * @returns { [topic]: { [iro_type]: pct, companies: Set } }
- */
 export function computeHeatmap(rows, industry, year, topicMode) {
   const filtered = rows.filter(r => r.industry_name === industry && r.year === year);
+  const totalCompanies = new Set(filtered.map(r => r.company_name)).size;
 
-  // unique companies in this industry/year
-  const allCompanies = new Set(filtered.map(r => r.company_name));
-  const totalCompanies = allCompanies.size;
-
-  const result = {}; // key: topic or subtopic -> { [iro_type]: Set<company> }
+  const result = {};
 
   for (const row of filtered) {
     const company = row.company_name;
     const iroType = row.iro_type;
 
-    let topics = [];
+    let keys = [];
     if (topicMode === 'esrs') {
-      // parent topic
-      topics.push({ level: 'parent', key: row.esrs_topic });
-      // subtopics
+      if (row.esrs_topic) keys.push(row.esrs_topic);
       const subs = row.sub_topics ? row.sub_topics.split(',').map(s => s.trim()).filter(Boolean) : [];
-      for (const sub of subs) {
-        topics.push({ level: 'sub', key: sub, parent: row.esrs_topic });
-      }
+      keys.push(...subs);
     } else {
-      // parent: esrs_topic, child: topic_name
-      topics.push({ level: 'parent', key: row.esrs_topic });
-      if (row.topic_name) {
-        topics.push({ level: 'sub', key: row.topic_name, parent: row.esrs_topic });
-      }
+      if (row.topic_name) keys.push(row.topic_name);
     }
 
-    for (const { key } of topics) {
-      if (!key) continue;
+    for (const key of keys) {
       if (!result[key]) {
         result[key] = {};
         for (const t of IRO_TYPES) result[key][t] = new Set();
@@ -128,39 +92,28 @@ export function computeHeatmap(rows, industry, year, topicMode) {
     }
   }
 
-  // Convert sets to percentages
   const pct = {};
   for (const [key, types] of Object.entries(result)) {
-    pct[key] = {};
+    pct[key] = { _total: totalCompanies };
     for (const t of IRO_TYPES) {
       pct[key][t] = totalCompanies > 0 ? (types[t].size / totalCompanies) * 100 : 0;
     }
-    pct[key]._total = totalCompanies;
   }
-
   return pct;
 }
 
-/**
- * Get detail rows for a specific topic + iro_type + industry + year
- */
-export function getDetailRows(rows, { industry, year, topicMode, topicKey, iroType, isSubtopic, parentTopic }) {
+export function getDetailRows(rows, { industry, year, topicMode, topicKey, iroType, isSubtopic }) {
   return rows.filter(r => {
     if (r.industry_name !== industry) return false;
     if (r.year !== year) return false;
     if (r.iro_type !== iroType) return false;
 
-    if (!isSubtopic) {
-      // parent topic
-      return r.esrs_topic === topicKey;
+    if (topicMode === 'esrs') {
+      if (!isSubtopic) return r.esrs_topic === topicKey;
+      const subs = r.sub_topics ? r.sub_topics.split(',').map(s => s.trim()) : [];
+      return subs.includes(topicKey);
     } else {
-      // subtopic
-      if (topicMode === 'esrs') {
-        const subs = r.sub_topics ? r.sub_topics.split(',').map(s => s.trim()) : [];
-        return subs.includes(topicKey) && r.esrs_topic === parentTopic;
-      } else {
-        return r.topic_name === topicKey && r.esrs_topic === parentTopic;
-      }
+      return r.topic_name === topicKey;
     }
   });
 }

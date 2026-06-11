@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { getDetailRows, IRO_LABELS, IRO_COLORS } from '../dataUtils';
 
 export default function DetailPage({ rows, detail, industry, year, topicMode, onBack }) {
-  const { topicKey, iroType, isSubtopic, parentTopic } = detail;
+  const { topicKey, iroType, isSubtopic } = detail;
 
   const detailRows = useMemo(
-    () => getDetailRows(rows, { industry, year, topicMode, topicKey, iroType, isSubtopic, parentTopic }),
+    () => getDetailRows(rows, { industry, year, topicMode, topicKey, iroType, isSubtopic }),
     [rows, detail, industry, year, topicMode]
   );
 
