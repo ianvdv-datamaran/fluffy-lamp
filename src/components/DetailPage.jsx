@@ -19,7 +19,8 @@ export default function DetailPage({ rows, detail, industry, year, topicMode, on
     return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
   }, [detailRows]);
 
-  const iroColor = IRO_COLORS[iroType];
+  const iroLabel = iroType === '_any' ? 'Across IROs' : IRO_LABELS[iroType];
+  const iroColor = iroType === '_any' ? '#7c3aed' : IRO_COLORS[iroType];
 
   return (
     <div className="detail-page">
@@ -38,7 +39,7 @@ export default function DetailPage({ rows, detail, industry, year, topicMode, on
             className="detail-iro-badge"
             style={{ background: iroColor, color: '#fff' }}
           >
-            {IRO_LABELS[iroType]}
+            {iroLabel}
           </span>
         </div>
         <div className="detail-meta">

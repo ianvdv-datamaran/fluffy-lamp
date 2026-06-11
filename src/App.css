@@ -152,6 +152,9 @@ select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   min-width: 260px; width: 260px;
 }
 
+.any-col-header { border-bottom: 3px solid #7c3aed !important; }
+.any-cell { border-right: 1px solid var(--border); }
+
 .iro-col-header {
   position: sticky; top: 0; z-index: 2;
   background: var(--surface);

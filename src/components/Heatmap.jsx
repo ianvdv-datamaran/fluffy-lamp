@@ -23,6 +23,31 @@ function colorForDiff(diff) {
   return `rgba(239, 68, 68, ${alpha.toFixed(2)})`;
 }
 
+function AnyCell({ pct, diff, showDiff, onClick }) {
+  const displayVal = showDiff ? diff : pct;
+  const bg = showDiff ? colorForDiff(diff) : colorForPct(pct);
+  const isEmpty = pct === 0 && (!showDiff || diff === 0);
+
+  return (
+    <td
+      className={`heatmap-cell any-cell ${isEmpty ? 'empty' : ''}`}
+      style={{ backgroundColor: bg }}
+      onClick={isEmpty ? undefined : onClick}
+      title={showDiff
+        ? `2025→2026: ${diff >= 0 ? '+' : ''}${diff.toFixed(1)}pp`
+        : `${pct.toFixed(1)}% of companies`}
+    >
+      {displayVal !== 0 && (
+        <span className="cell-value">
+          {showDiff && diff > 0 ? '+' : ''}
+          {showDiff ? diff.toFixed(1) : pct.toFixed(0)}
+          {showDiff ? 'pp' : '%'}
+        </span>
+      )}
+    </td>
+  );
+}
+
 function Cell({ pct, diff, showDiff, onClick }) {
   const displayVal = showDiff ? diff : pct;
   const bg = showDiff ? colorForDiff(diff) : colorForPct(pct);
@@ -66,6 +91,12 @@ function TopicRow({ topicKey, isSubtopic, heatmap2026, heatmap2025, showDiff, ye
           <span className="topic-text">{topicKey}</span>
         </div>
       </td>
+      <AnyCell
+        pct={topicData._any ?? 0}
+        diff={(topicData._any ?? 0) - (heatmap2025?.[topicKey]?._any ?? 0)}
+        showDiff={showDiff}
+        onClick={() => onCellClick({ topicKey, iroType: '_any', isSubtopic, topicMode })}
+      />
       {IRO_TYPES.map(iroType => {
         const pct = topicData[iroType] ?? 0;
         const pct25 = heatmap2025?.[topicKey]?.[iroType] ?? 0;
@@ -190,6 +221,7 @@ export default function Heatmap({ rows, industry, year, topicMode, showDiff, onC
           <thead>
             <tr>
               <th className="topic-col-header">Topic</th>
+              <th className="iro-col-header any-col-header">Across IROs</th>
               {IRO_TYPES.map(t => (
                 <th
                   key={t}

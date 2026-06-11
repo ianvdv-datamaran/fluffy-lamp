@@ -83,9 +83,10 @@ export function computeHeatmap(rows, industry, year, topicMode) {
 
     for (const key of keys) {
       if (!result[key]) {
-        result[key] = {};
+        result[key] = { _any: new Set() };
         for (const t of IRO_TYPES) result[key][t] = new Set();
       }
+      result[key]._any.add(company);
       if (iroType && result[key][iroType]) {
         result[key][iroType].add(company);
       }
@@ -95,6 +96,7 @@ export function computeHeatmap(rows, industry, year, topicMode) {
   const pct = {};
   for (const [key, types] of Object.entries(result)) {
     pct[key] = { _total: totalCompanies };
+    pct[key]._any = totalCompanies > 0 ? (types._any.size / totalCompanies) * 100 : 0;
     for (const t of IRO_TYPES) {
       pct[key][t] = totalCompanies > 0 ? (types[t].size / totalCompanies) * 100 : 0;
     }
@@ -106,7 +108,7 @@ export function getDetailRows(rows, { industry, year, topicMode, topicKey, iroTy
   return rows.filter(r => {
     if (r.industry_name !== industry) return false;
     if (r.year !== year) return false;
-    if (r.iro_type !== iroType) return false;
+    if (iroType !== '_any' && r.iro_type !== iroType) return false;
 
     if (topicMode === 'esrs') {
       if (!isSubtopic) return r.esrs_topic === topicKey;
